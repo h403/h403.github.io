@@ -13,30 +13,32 @@
 	<body>
 		<div data-role="page">
 			<div data-role="header">
-				<h1>header</h1>
+				<h1>線路上の定在波</h1>
 			</div>
 			<div role="main" class="ui-content">
 				<canvas width="320" height="300"></canvas>
+				<div id="slidervalue" style="margin:10px;"></div>
 				<div>
-					<label for='zr'>Z2</label>
-					<input id='zr' type='range' min='-1' max='1' step='0.01' value='0'>
+					<input id='zlr' type='range' min='10' max='90' step='1' value='50'>
+					<input id='zli' type='range' min='-90' max='90' step='1' value='0'>
+					<input id='zsr' type='range' min='10' max='90' step='1' value='50'>
+					<input id='zsi' type='range' min='-90' max='90' step='1' value='0'>
 				</div>
 			</div>
 			<div data-role="footer">
-				<h3>footer</h3>
+				<h3>MWE 2016 超入門講座</h3>
 			</div>
 		</div>
 	</body>
 	<script>
-		var k = math.chain(2).multiply(math.pi).divide(40.).done();
-		var idx1 = math.range(0,-201,-1);
-		var kx1 = math.chain(idx1)
-			.multiply(k)
-			.done();
-		var idx2 = math.range(0,101);
-		var kx2 = math.chain(idx2)
-			.multiply(k)
-			.done();
+		var L_LAMBDA = 2.;
+		var k = math.chain(2).multiply(math.pi).done();
+		var idx1 = math.range(-2,0,0.01);
+		var kx1 = math.chain(idx1).multiply(k).done();
+		var idx2 = math.range(0,2,0.01);
+		var kx2 = math.chain(idx2).multiply(k).done();
+		var idx3 = math.range(2,4,0.01);
+		var kx3 = math.chain(idx3).multiply(k).done();
 		/*
 		var dat = math.chain(kx1)
 			.cos()
@@ -59,41 +61,71 @@
 			return obj;
 		}
 		//console.log(math.abs(math.exp(math.multiply(math.i,kx1))));
-		var period = 100;
 		(function() {
+			var PERIOD = 100;
+			var Z2 = math.complex(50,0);
 			var timer;
 			var mb = 1.0;
+			var zl = math.complex(10,8);
+			var zs = math.complex(10,-8);
 			$('div')
-				.on('change','#zr',function(){
-					mb = $('#zr').val() - 0;
-				})
-				.on('slidecreate','#zr',function(){
-					mb = $('#zr').val() - 0;
-				});
-			var t = 0;
+				.on('change','#zlr',function(){zl = math.complex($('#zlr').val() - 0, $('#zli').val() - 0);})
+				.on('change','#zli',function(){zl = math.complex($('#zlr').val() - 0, $('#zli').val() - 0);})
+				.on('change','#zsr',function(){zs = math.complex($('#zsr').val() - 0, $('#zsi').val() - 0);})
+				.on('change','#zsi',function(){zs = math.complex($('#zsr').val() - 0, $('#zsi').val() - 0);})
+				.on('slidecreate','#zlr',function(){zl = math.complex($('#zlr').val() - 0, $('#zli').val() - 0);})
+				.on('slidecreate','#zli',function(){zl = math.complex($('#zlr').val() - 0, $('#zli').val() - 0);})
+				.on('slidecreate','#zsr',function(){zs = math.complex($('#zsr').val() - 0, $('#zsi').val() - 0);})
+				.on('slidecreate','#zsi',function(){zs = math.complex($('#zsr').val() - 0, $('#zsi').val() - 0);});
+				var t = 0;
+			function cmul(a,b) {
+				r = math.subtract(math.multiply(a.re,b.re),math.multiply(a.im,b.im));
+				i = math.add(math.multiply(a.re,b.im),math.multiply(a.im,b.re));
+				return {re:r,im:i};
+			}
+			function cexp(phi) {
+				r = math.cos(phi);
+				i = math.sin(phi);
+				return {re:r,im:i};
+			}
+			function conv(obj) {
+				return math.complex(obj.re,obj.im);
+			}
 			function render() {
-				var wt = math.chain(2)
-					.multiply(math.pi)
-					.divide(period)
-					.multiply(t);
-				var fw = math.chain(wt)
-					.subtract(kx1)
-					.cos()
-					.multiply(50)
-					.done();
-				var bw = math.chain(wt)
+				var gamma1 = math.divide(math.subtract(Z2,zs),math.add(Z2,zs));
+				var gamma3 = math.divide(math.subtract(zl,Z2),math.add(zl,Z2));
+				var etheta = conv(cexp(math.chain(-2).multiply(math.pi).multiply(L_LAMBDA).done()));
+				var num = math.add(gamma1,math.multiply(gamma3,etheta));
+				var den = math.add(1,math.chain(gamma1).multiply(gamma3).multiply(etheta).done());
+				var gamma = math.divide(num,den);
+				//
+				var num = math.add(1,gamma1);
+				var den = math.add(1,math.chain(gamma1).multiply(gamma3).multiply(etheta).done());
+				var tplus = math.divide(num,den);
+				var num = math.chain(math.add(1,gamma1)).multiply(gamma3).multiply(etheta).done();
+				var den = math.add(1,math.chain(gamma1).multiply(gamma3).multiply(etheta).done());
+				var tminus = math.divide(num,den);
+				var wt = math.chain(2).multiply(math.pi).divide(PERIOD).multiply(t).done();
+				var fw1 = math.multiply(50,cexp(math.chain(wt).subtract(kx1).done()).re);
+				var bw1 = math.multiply(50,cmul(cexp(math.chain(wt).add(kx1).done()),gamma).re);
+				var fw2 = math.multiply(50,cmul(cexp(math.chain(wt).subtract(kx2).done()),tplus).re);
+				var bw2 = math.multiply(50,cmul(cexp(math.chain(wt).add(kx2).done()),math.multiply(tminus,etheta)).re);
+				var fw3 = math.multiply(50,cmul(cexp(math.chain(wt).subtract(kx3).done()),math.multiply(math.add(tplus,tminus),etheta)).re);
+				/*
+				var bw1 = math.chain(wt)
 					.add(kx1)
 					.cos()
 					.multiply(mb)
 					.multiply(50)
 					.done();
+				*/
 				var tw = math.chain(wt)
 					.subtract(kx2)
 					.cos()
 					.multiply(math.add(mb,1))
 					.multiply(50)
 					.done();
-				var sw = math.add(fw,bw);
+				//var sw = math.add(fw,bw);
 				var ew = math.chain(
 						math.add(
 							math.exp(math.multiply(math.i,kx1))
@@ -115,12 +147,22 @@
 				*/
 				$('canvas')
 					.clearCanvas()
-					.drawLine(lineObj(idx1,fw,210,150,{strokeStyle: '#00f'}))
-					.drawLine(lineObj(idx1,bw,210,150,{strokeStyle: '#080'}))
-					.drawLine(lineObj(idx1,sw,210,150,{strokeStyle: '#f00',strokeWidth: 2}))
+					.drawLine(lineObj(math.multiply(50,idx1),fw1,110,150,{strokeStyle: '#00f'}))
+					.drawLine(lineObj(math.multiply(50,idx1),bw1,110,150,{strokeStyle: '#080'}))
+					.drawLine(lineObj(math.multiply(50,idx1),math.add(fw1,bw1),110,150,{strokeStyle: '#f00'}))
+					.drawLine(lineObj(math.multiply(50,idx2),fw2,110,150,{strokeStyle: '#00f'}))
+					.drawLine(lineObj(math.multiply(50,idx2),bw2,110,150,{strokeStyle: '#080'}))
+					.drawLine(lineObj(math.multiply(50,idx2),math.add(fw2,bw2),110,150,{strokeStyle: '#f00'}))
+					.drawLine(lineObj(math.multiply(50,idx3),fw3,110,150,{strokeStyle: '#00f'}))
+					//.drawLine(lineObj(idx1,sw,210,150,{strokeStyle: '#f00',strokeWidth: 2}))
 					//.drawLine(lineObj(idx1,ew,210,100,{strokeStyle: '#f00',strokeDash: [10,3,5,3]}))
-					.drawLine(lineObj(idx1,ew,210,150,{strokeStyle: '#f00',strokeDash: [5,3]}))
-					.drawLine(lineObj(idx2,tw,210,150,{strokeStyle: '#f00',strokeWidth: 2}));
+					//.drawLine(lineObj(idx1,ew,210,150,{strokeStyle: '#f00',strokeDash: [5,3]}))
+					//.drawLine(lineObj(idx2,tw,210,150,{strokeStyle: '#f00',strokeWidth: 2}))
+					.drawLine({x1:10,y1:100,x2:310,y2:100,strokeStyle:'#000',strokeWidth:1,rounded:true,strokeDash:[3,10]})
+					.drawLine({x1:10,y1:200,x2:310,y2:200,strokeStyle:'#000',strokeWidth:1,rounded:true,strokeDash:[3,10]})
+					.drawLine({x1:110,y1:50,x2:110,y2:250,strokeStyle:'#000',strokeWidth:1,rounded:true,strokeDash:[10,3,5,3]})
+					.drawLine({x1:210,y1:50,x2:210,y2:250,strokeStyle:'#000',strokeWidth:1,rounded:true,strokeDash:[10,3,5,3]})
+					;
 					/*
 				$('canvas')
 				.clearCanvas()
@@ -131,7 +173,18 @@
 					height:50
 				});
 				*/
-				if (t > period) {
+				/*
+				$("#slidervalue").html(
+					"slider:"+cmul(
+						cexp(
+							math.chain(wt).subtract(kx1).done()
+						),
+						gamma
+					).re
+				);
+				*/
+				$("#slidervalue").html("ZS = "+zs+"　　ZL = "+zl);
+				if (t > PERIOD) {
 					t = 0;
 				} else {
 					t += 1;
