@@ -19,10 +19,10 @@
 				<canvas width="320" height="300"></canvas>
 				<div id="slidervalue" style="margin:10px;"></div>
 				<div>
-					<input id='zlr' type='range' min='10' max='90' step='1' value='50'>
-					<input id='zli' type='range' min='-90' max='90' step='1' value='0'>
-					<input id='zsr' type='range' min='10' max='90' step='1' value='50'>
-					<input id='zsi' type='range' min='-90' max='90' step='1' value='0'>
+					<input id='zlr' type='range' min='1' max='199' step='1' value='50'>
+					<input id='zli' type='range' min='-200' max='200' step='1' value='0'>
+					<input id='zsr' type='range' min='1' max='199' step='1' value='50'>
+					<input id='zsi' type='range' min='-200' max='200' step='1' value='0'>
 				</div>
 			</div>
 			<div data-role="footer">
@@ -33,11 +33,11 @@
 	<script>
 		var L_LAMBDA = 2.;
 		var k = math.chain(2).multiply(math.pi).done();
-		var idx1 = math.range(-2,0,0.05);
+		var idx1 = math.range(-2,0.05,0.05);
 		var kx1 = math.chain(idx1).multiply(k).done();
-		var idx2 = math.range(0,2,0.05);
+		var idx2 = math.range(0,2.05,0.05);
 		var kx2 = math.chain(idx2).multiply(k).done();
-		var idx3 = math.range(2,4,0.05);
+		var idx3 = math.range(2,4.05,0.05);
 		var kx3 = math.chain(idx3).multiply(k).done();
 		/*
 		var dat = math.chain(kx1)
@@ -78,9 +78,13 @@
 				.on('slidecreate','#zsr',function(){zs = math.complex($('#zsr').val() - 0, $('#zsi').val() - 0);})
 				.on('slidecreate','#zsi',function(){zs = math.complex($('#zsr').val() - 0, $('#zsi').val() - 0);});
 				var t = 0;
+			add = math.add;
+			mul = math.multiply;
+			div = math.divide;
+			sub = math.subtract;
 			function cmul(a,b) {
-				r = math.subtract(math.multiply(a.re,b.re),math.multiply(a.im,b.im));
-				i = math.add(math.multiply(a.re,b.im),math.multiply(a.im,b.re));
+				r = sub(mul(a.re,b.re),mul(a.im,b.im));
+				i = add(mul(a.re,b.im),mul(a.im,b.re));
 				return {re:r,im:i};
 			}
 			function cexp(phi) {
@@ -88,29 +92,45 @@
 				i = math.sin(phi);
 				return {re:r,im:i};
 			}
-			function conv(obj) {
-				return math.complex(obj.re,obj.im);
+			function conv(o) {
+				return math.complex(o.re,o.im);
+			}
+			function conj(o) {
+				return {re:o.re,im:-o.im};
+			}
+			function cadd(a,b) {
+				r = add(a.re,b.re);
+				i = add(a.im,b.im);	
+				return {re:r,im:i};
+			}
+			function cabs(o) {
+				//return math.sqrt(add(mul(o.re,o.re),mul(o.im,o.im)));
+				return math.sqrt(math.add(math.square(o.re),math.square(o.im)));
 			}
 			function render() {
-				var gamma1 = math.divide(math.subtract(Z2,zs),math.add(Z2,zs));
-				var gamma3 = math.divide(math.subtract(zl,Z2),math.add(zl,Z2));
+				var arg = mul(math.pi,math.arg(div(zl,add(zs,zl))));
+				var scale = 50 * math.cos(arg);
+				var gamma1 = div(sub(Z2,zs),add(Z2,zs));
+				var gamma3 = div(sub(zl,Z2),add(zl,Z2));
 				var etheta = conv(cexp(math.chain(-2).multiply(math.pi).multiply(L_LAMBDA).done()));
-				var num = math.add(gamma1,math.multiply(gamma3,etheta));
-				var den = math.add(1,math.chain(gamma1).multiply(gamma3).multiply(etheta).done());
-				var gamma = math.divide(num,den);
-				//
-				var num = math.add(1,gamma1);
-				var den = math.add(1,math.chain(gamma1).multiply(gamma3).multiply(etheta).done());
-				var tplus = math.divide(num,den);
-				var num = math.chain(math.add(1,gamma1)).multiply(gamma3).multiply(etheta).done();
-				var den = math.add(1,math.chain(gamma1).multiply(gamma3).multiply(etheta).done());
-				var tminus = math.divide(num,den);
+				var num = add(gamma1,mul(gamma3,etheta));
+				var den = add(1,math.chain(gamma1).multiply(gamma3).multiply(etheta).done());
+				var gamma = div(num,den);
+				var num = add(1,gamma1);
+				var den = add(1,math.chain(gamma1).multiply(gamma3).multiply(etheta).done());
+				var tplus = div(num,den);
+				var num = math.chain(add(1,gamma1)).multiply(gamma3).multiply(etheta).done();
+				var den = add(1,math.chain(gamma1).multiply(gamma3).multiply(etheta).done());
+				var tminus = div(num,den);
 				var wt = math.chain(2).multiply(math.pi).divide(PERIOD).multiply(t).done();
-				var fw1 = math.multiply(50,cexp(math.chain(wt).subtract(kx1).done()).re);
-				var bw1 = math.multiply(50,cmul(cexp(math.chain(wt).add(kx1).done()),gamma).re);
-				var fw2 = math.multiply(50,cmul(cexp(math.chain(wt).subtract(kx2).done()),tplus).re);
-				var bw2 = math.multiply(50,cmul(cexp(math.chain(wt).add(kx2).done()),math.multiply(tminus,etheta)).re);
-				var fw3 = math.multiply(50,cmul(cexp(math.chain(wt).subtract(kx3).done()),math.multiply(math.add(tplus,tminus),etheta)).re);
+				//
+				var cfw1 = cexp(math.chain(wt).subtract(kx1).done());
+				var cbw1 = cmul(cexp(math.chain(wt).add(kx1).done()),gamma);
+				var csw1 = cadd(cfw1,cbw1);
+				var cfw2 = cmul(cexp(math.chain(wt).subtract(kx2).done()),tplus);
+				var cbw2 = cmul(cexp(math.chain(wt).add(kx2).done()),mul(tminus,etheta));
+				var csw2 = cadd(cfw2,cbw2);
+				var fw3 = mul(scale,cmul(cexp(math.chain(wt).subtract(kx3).done()),mul(add(tplus,tminus),etheta)).re);
 				/*
 				var bw1 = math.chain(wt)
 					.add(kx1)
@@ -147,21 +167,25 @@
 				*/
 				$('canvas')
 					.clearCanvas()
-					.drawLine(lineObj(math.multiply(50,idx1),fw1,110,150,{strokeStyle: '#00f'}))
-					.drawLine(lineObj(math.multiply(50,idx1),bw1,110,150,{strokeStyle: '#080'}))
-					.drawLine(lineObj(math.multiply(50,idx1),math.add(fw1,bw1),110,150,{strokeStyle: '#f00'}))
-					.drawLine(lineObj(math.multiply(50,idx2),fw2,110,150,{strokeStyle: '#00f'}))
-					.drawLine(lineObj(math.multiply(50,idx2),bw2,110,150,{strokeStyle: '#080'}))
-					.drawLine(lineObj(math.multiply(50,idx2),math.add(fw2,bw2),110,150,{strokeStyle: '#f00'}))
-					.drawLine(lineObj(math.multiply(50,idx3),fw3,110,150,{strokeStyle: '#00f'}))
+					.drawLine({x1:10,y1:100,x2:310,y2:100,strokeStyle:'#888',strokeWidth:1,rounded:true,strokeDash:[3,10]})
+					.drawLine({x1:10,y1:200,x2:310,y2:200,strokeStyle:'#888',strokeWidth:1,rounded:true,strokeDash:[3,10]})
+					.drawLine({x1:110,y1:50,x2:110,y2:250,strokeStyle:'#888',strokeWidth:1,rounded:true,strokeDash:[10,3,5,3]})
+					.drawLine({x1:210,y1:50,x2:210,y2:250,strokeStyle:'#888',strokeWidth:1,rounded:true,strokeDash:[10,3,5,3]})
+					.drawLine(lineObj(math.multiply(50,idx1),mul(scale,cfw1.re),110,150,{strokeStyle: '#00f'}))
+					.drawLine(lineObj(math.multiply(50,idx1),mul(scale,cbw1.re),110,150,{strokeStyle: '#080'}))
+					.drawLine(lineObj(math.multiply(50,idx1),mul(scale,csw1.re),110,150,{strokeStyle: '#f00'}))
+					.drawLine(lineObj(math.multiply(50,idx1),mul(-scale,cabs(csw1)),110,150,{strokeStyle:'#f88',strokeDash:[5,3]}))
+					.drawLine(lineObj(math.multiply(50,idx1),mul(scale,cabs(csw1)),110,150,{strokeStyle:'#f88',strokeDash:[5,3]}))
+					.drawLine(lineObj(math.multiply(50,idx2),mul(scale,cfw2.re),110,150,{strokeStyle: '#00f'}))
+					.drawLine(lineObj(math.multiply(50,idx2),mul(scale,cbw2.re),110,150,{strokeStyle: '#080'}))
+					.drawLine(lineObj(math.multiply(50,idx2),mul(scale,csw2.re),110,150,{strokeStyle: '#f00'}))
+					.drawLine(lineObj(math.multiply(50,idx2),mul(-scale,cabs(csw2)),110,150,{strokeStyle:'#f88',strokeDash:[5,3]}))
+					.drawLine(lineObj(math.multiply(50,idx2),mul(scale,cabs(csw2)),110,150,{strokeStyle:'#f88',strokeDash:[5,3]}))
+					.drawLine(lineObj(math.multiply(50,idx3),fw3,110,150,{strokeStyle: '#f00'}))
 					//.drawLine(lineObj(idx1,sw,210,150,{strokeStyle: '#f00',strokeWidth: 2}))
 					//.drawLine(lineObj(idx1,ew,210,100,{strokeStyle: '#f00',strokeDash: [10,3,5,3]}))
 					//.drawLine(lineObj(idx1,ew,210,150,{strokeStyle: '#f00',strokeDash: [5,3]}))
 					//.drawLine(lineObj(idx2,tw,210,150,{strokeStyle: '#f00',strokeWidth: 2}))
-					.drawLine({x1:10,y1:100,x2:310,y2:100,strokeStyle:'#000',strokeWidth:1,rounded:true,strokeDash:[3,10]})
-					.drawLine({x1:10,y1:200,x2:310,y2:200,strokeStyle:'#000',strokeWidth:1,rounded:true,strokeDash:[3,10]})
-					.drawLine({x1:110,y1:50,x2:110,y2:250,strokeStyle:'#000',strokeWidth:1,rounded:true,strokeDash:[10,3,5,3]})
-					.drawLine({x1:210,y1:50,x2:210,y2:250,strokeStyle:'#000',strokeWidth:1,rounded:true,strokeDash:[10,3,5,3]})
 					;
 					/*
 				$('canvas')
@@ -184,6 +208,7 @@
 				);
 				*/
 				$("#slidervalue").html("ZS = "+zs+"　　ZL = "+zl);
+				//$("#slidervalue").html("a"+cabs(csw1));
 				if (t > PERIOD) {
 					t = 0;
 				} else {
@@ -192,7 +217,6 @@
 			}
 			timer = setInterval(render, 17);
 		})();
-		
 		/*
 		angle = {
 			degrees: 0,
